@@ -203,13 +203,8 @@ YYMM + MajorRevision (letter) + MinorRevision (number)
 
 ---
 
-## Roadmap
+## Progress
 
-> Planning notes only — not scheduled for implementation.
-
-- JSON file support
-- Modular parser abstraction
-- Plugin-style parser architecture
 
 ---
 
