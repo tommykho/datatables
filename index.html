@@ -483,24 +483,22 @@
 
   // ============================================================
   // MODULE: File Loader
-  // Responsibility: Folder scan via File System Access API (showDirectoryPicker);
+  // Responsibility: Folder scan via HTTP directory listing (fetch './');
   //   populate file dropdown; handle "File Upload…" option; route files to parsers.
   //
-  //   Folder scan method: File System Access API (showDirectoryPicker).
-  //     Supported in Chromium-based browsers (Chrome, Edge).
-  //     Graceful fallback message shown if API is unavailable (e.g., Firefox).
+  //   Folder scan method: fetch('./')  — works with python -m http.server.
+  //     Python's built-in HTTP server returns an HTML directory listing.
+  //     File hrefs matching *.csv / *.xlsx are extracted via regex.
   //   File upload method: standard <input type="file"> picker (all browsers).
   // ============================================================
   const FileLoader = (() => {
-    // Map of filename → FileSystemFileHandle (populated after folder scan)
-    let scannedHandles   = {};
-    let currentFileName  = '';
-    let currentWorkbook  = null;   // held for sheet switching
+    let currentFileName = '';
+    let currentWorkbook = null;   // held for sheet switching
 
     function setStatus(msg, isError = false) {
       const el = document.getElementById('statusMessage');
-      el.textContent  = msg;
-      el.style.color  = isError ? '#c00' : '';
+      el.textContent   = msg;
+      el.style.color   = isError ? '#c00' : '';
       el.style.display = '';
       document.getElementById('tableWrapper').style.display = 'none';
     }
@@ -509,7 +507,7 @@
     // Returns sorted list of filenames.
     function populateDropdown(fileNames) {
       const select = document.getElementById('fileDropdown');
-      // Remove previously inserted file options (index 1 … N-2 before divider)
+      // Remove previously inserted file options (keep slot 0 = __scan__, last two = divider + upload)
       while (select.options.length > 3) select.remove(1);
 
       const sorted = [...fileNames].sort((a, b) => a.localeCompare(b));
@@ -519,51 +517,61 @@
       return sorted;
     }
 
+    // Fetch the HTTP server's directory listing and extract .csv / .xlsx filenames.
+    // Works with python -m http.server which returns an HTML listing for directory URLs.
     async function scanFolder() {
-      if (!window.showDirectoryPicker) {
-        setStatus(
-          'Folder scan requires the File System Access API (Chrome / Edge). ' +
-          'Use "File Upload…" to load a file directly.',
-          true
-        );
-        return;
-      }
-
-      let dirHandle;
+      setStatus('Scanning folder…');
+      let files = [];
       try {
-        dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+        const response = await fetch('./');
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const html = await response.text();
+        // Match href values that look like bare filenames (no path separators / query strings)
+        const matches = [...html.matchAll(/href="([^"/?#][^"]*\.(csv|xlsx))"/gi)];
+        files = matches.map(m => decodeURIComponent(m[1]));
       } catch (e) {
-        if (e.name !== 'AbortError') setStatus('Folder selection cancelled or failed.', true);
-        return;
+        setStatus('Folder scan failed: ' + e.message + '. Use "File Upload…" to load a file.', true);
+        return [];
       }
 
-      scannedHandles = {};
-      for await (const [name, handle] of dirHandle.entries()) {
-        if (handle.kind === 'file' && /\.(csv|xlsx)$/i.test(name)) {
-          scannedHandles[name] = handle;
-        }
+      if (files.length === 0) {
+        setStatus('No .csv or .xlsx files found in folder. Use "File Upload…" to load a file.');
+        return [];
       }
 
-      const names = Object.keys(scannedHandles);
-      if (names.length === 0) {
-        setStatus('No .csv or .xlsx files found in the selected folder.');
-        return;
-      }
-
-      const sorted    = populateDropdown(names);
-      const firstCSV  = sorted.find(n => /\.csv$/i.test(n));
-      const autoLoad  = firstCSV || sorted[0];
+      const sorted   = populateDropdown(files);
+      const firstCSV = sorted.find(n => /\.csv$/i.test(n));
+      const autoLoad = firstCSV || sorted[0];
 
       document.getElementById('fileDropdown').value = autoLoad;
       await loadFileByName(autoLoad);
+      return sorted;
     }
 
     async function loadFileByName(name) {
-      const handle = scannedHandles[name];
-      if (!handle) return;
       currentFileName = name;
-      const file = await handle.getFile();
-      await loadFile(file, name);
+      setStatus('Loading ' + name + '…');
+      try {
+        const response = await fetch('./' + encodeURIComponent(name));
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+
+        if (/\.csv$/i.test(name)) {
+          const text = await response.text();
+          loadThroughNormalizer(CSVParser.parse(text));
+
+        } else if (/\.xlsx$/i.test(name)) {
+          const buffer = await response.arrayBuffer();
+          const { workbook, sheetNames } = XLSXParser.parse(buffer);
+          currentWorkbook = workbook;
+          if (sheetNames.length === 1) {
+            loadThroughNormalizer(XLSXParser.loadSheet(workbook, sheetNames[0]));
+          } else {
+            showSheetModal(workbook, sheetNames);
+          }
+        }
+      } catch (e) {
+        setStatus('Error loading ' + name + ': ' + e.message, true);
+      }
     }
 
     async function loadFile(file, name) {
@@ -571,14 +579,12 @@
 
       if (/\.csv$/i.test(currentFileName)) {
         const text = await file.text();
-        const raw  = CSVParser.parse(text);
-        loadThroughNormalizer(raw);
+        loadThroughNormalizer(CSVParser.parse(text));
 
       } else if (/\.xlsx$/i.test(currentFileName)) {
         const buffer = await file.arrayBuffer();
         const { workbook, sheetNames } = XLSXParser.parse(buffer);
         currentWorkbook = workbook;
-
         if (sheetNames.length === 1) {
           loadThroughNormalizer(XLSXParser.loadSheet(workbook, sheetNames[0]));
         } else {
@@ -631,10 +637,10 @@
 
         } else if (val === '__upload__') {
           // Reset immediately so the user can re-trigger upload later
-          requestAnimationFrame(() => { this.value = '__scan__'; });
+          requestAnimationFrame(() => { this.value = currentFileName || '__scan__'; });
           uploadInput.click();
 
-        } else if (scannedHandles[val]) {
+        } else if (val) {
           await loadFileByName(val);
         }
       });
@@ -652,6 +658,9 @@
         await loadFile(file, file.name);
         this.value = '';
       });
+
+      // Auto-scan the folder on page load
+      scanFolder();
     }
 
     return { init, getCurrentFileName: () => currentFileName };
@@ -682,11 +691,12 @@
 
       fresh.addEventListener('change', function () {
         if (this.value === '') {
-          dt.rowGroup().dataSrc(null);
+          dt.rowGroup().disable();
           dt.draw();
         } else {
           const colIdx = parseInt(this.value, 10);
           dt.rowGroup().dataSrc(colIdx);
+          dt.rowGroup().enable();
           dt.order([[colIdx, 'asc']]).draw();
         }
       });
@@ -696,7 +706,7 @@
       const select = document.getElementById('groupByDropdown');
       select.innerHTML = '<option value="">Group By: None</option>';
       select.disabled  = true;
-      if (dtInstance) dtInstance.rowGroup().dataSrc(null);
+      if (dtInstance) { try { dtInstance.rowGroup().disable(); } catch (_) {} }
     }
 
     return { populate, bindEvents, reset };
@@ -715,8 +725,10 @@
     }
 
     function exportCSV(dt, originalFilename) {
-      const base     = (originalFilename || 'export').replace(/\.(csv|xlsx)$/i, '');
-      const filename = base + '.csv';
+      const base      = (originalFilename || 'export').replace(/\.(csv|xlsx)$/i, '');
+      const suggested = base + '.csv';
+      const filename  = prompt('Save as:', suggested);
+      if (!filename) return;
 
       const visibleCols = dt.columns(':visible').indexes().toArray();
 
@@ -944,7 +956,7 @@
         lengthMenu:     [[10, 25, 50, 100, 250], [10, 25, 50, 100, 250]],
         select:         { style: 'multi' },
         rowGroup: {
-          dataSrc: null,
+          dataSrc: 0,   // placeholder; disabled immediately after init below
           startRender(rows, group) {
             if (group === null || group === undefined) return '';
             return `${group} (${rows.count()} items)`;
@@ -977,6 +989,9 @@
           }
         ]
       });
+
+      // Disable RowGroup on startup — grouping is driven by GroupingManager dropdown.
+      dt.rowGroup().disable();
 
       // showSelectedFilter references dt, so must be created after DataTable init.
       // The button action closures capture this variable by reference and only
