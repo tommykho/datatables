@@ -51,7 +51,6 @@ Drop it in any folder with CSV or XLSX files and open it in a browser.
 ├── index.html            ← entire application (single file)
 ├── README.md
 ├── AGENTS.md             ← agent & contributor rules
-├── CLAUDE.md             ← Claude Code project instructions
 ├── PROJECT_CHECKLIST.md  ← phased implementation tracker
 ├── *.csv                 ← sample data files
 └── *.xlsx                ← sample data files
