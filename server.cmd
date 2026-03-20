@@ -1,1 +1,2 @@
-python -m http.server 8000
+@echo off
+python server.py

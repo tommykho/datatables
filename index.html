@@ -1,436 +1,1073 @@
 <!DOCTYPE html>
+<!--
+  datatables.html
+  Offline, server-less, single-file CSV / XLSX data inspector.
+  License: MIT (placeholder — programmer must add licence text before release)
+  Version: 260320A
+-->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Generic CSV Datatables Viewer v2512G1</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="TH">
+  <title>Datatables Viewer 260320A</title>
 
+  <!-- ── CDN: Bootstrap 5 ─────────────────────────────────────── -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <!-- DataTables CSS for Bootstrap 5 -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/2.3.4/css/dataTables.dataTables.css">
+
+  <!-- ── CDN: DataTables + plugins ────────────────────────────── -->
   <link rel="stylesheet" href="https://cdn.datatables.net/2.3.4/css/dataTables.bootstrap5.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.2.5/css/buttons.bootstrap5.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/rowgroup/1.6.0/css/rowGroup.bootstrap5.min.css">  
-  <link rel="stylesheet" href="https://cdn.datatables.net/select/3.1.3/css/select.dataTables.css">
-  <!-- jQuery -->
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <!-- Bootstrap 5 JS (for dropdowns/buttons) -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- DataTables + Bootstrap 5 integration -->
-  <script src="https://cdn.datatables.net/2.3.4/js/dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/2.3.4/js/dataTables.bootstrap5.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/3.2.5/js/dataTables.buttons.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/3.2.5/js/buttons.bootstrap5.min.js"></script>
-  <script src="https://cdn.datatables.net/rowgroup/1.6.0/js/dataTables.rowGroup.min.js"></script>
-  <script src="https://cdn.datatables.net/rowgroup/1.6.0/js/rowGroup.bootstrap5.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/3.2.5/js/buttons.colVis.min.js"></script>
-  <script src="https://cdn.datatables.net/responsive/3.0.6/js/dataTables.responsive.min.js"></script>
-  <script src="https://cdn.datatables.net/responsive/3.0.6/js/responsive.bootstrap5.min.js"></script>
-  <script src="https://cdn.datatables.net/select/3.1.3/js/dataTables.select.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.datatables.net/rowgroup/1.6.0/css/rowGroup.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/select/3.1.3/css/select.bootstrap5.min.css">
+
+  <!-- ── Google Fonts ─────────────────────────────────────────── -->
+  <style>@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans&display=swap');</style>
 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Nunito+Sans&display=swap');
-    *{
+    /* ============================================================
+       STYLES: Base & Typography
+    ============================================================ */
+    *, *::before, *::after {
       font-family: "Nunito Sans", monospace;
       font-size: 1.0rem;
-    }
-    thead input {
-      width: 100%;
       box-sizing: border-box;
     }
-    #iplTable tbody tr:hover {
-        background-color: yellow !important;
-        color: #000044;
+
+    /* ============================================================
+       STYLES: Light Mode (default)
+    ============================================================ */
+    body {
+      background-color: #f8f9fa;
+      color: #212529;
+      transition: background-color 0.2s, color 0.2s;
     }
-    #loadingMessage {
+
+    thead input {
+      width: 100%;
+    }
+
+    #dataTable tbody tr:hover {
+      background-color: yellow !important;
+      color: #000044;
+    }
+
+    #statusMessage {
       text-align: center;
       padding: 20px;
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       color: #666;
     }
-	.qrcode {
-      display: none;
+
+    .dataTables_length,
+    .dataTables_length select,
+    .dataTables_length label {
+      font-size: 0.75rem;
     }
-    .qrcode.show {
-      display: block;
+
+    .dt-buttons .btn {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
     }
-	.barcode {
-      display: none;
+
+    .qrcode        { display: none; }
+    .qrcode.show   { display: block; }
+    .barcode       { display: none; }
+    .barcode.show  { display: block; }
+
+    .dataTables_paginate .pagination { justify-content: flex-end; }
+
+    /* ============================================================
+       STYLES: Dark Mode — all rules scoped to body.dark-mode only.
+       No inline styles are applied by JavaScript.
+    ============================================================ */
+    body.dark-mode {
+      background-color: #121212;
+      color: #e0e0e0;
     }
-    .barcode.show {
-      display: block;
+
+    body.dark-mode .modal-content {
+      background-color: #1e1e1e;
+      border-color: #444;
+      color: #e0e0e0;
+    }
+
+    body.dark-mode .modal-header,
+    body.dark-mode .modal-footer {
+      border-color: #444;
+    }
+
+    body.dark-mode table.dataTable thead tr:first-child th {
+      background-color: #2a2a2a;
+      color: #e0e0e0;
+      border-color: #444;
+    }
+
+    body.dark-mode table.dataTable thead tr:nth-child(2) th {
+      background-color: #1e1e1e;
+      border-color: #333;
+    }
+
+    body.dark-mode thead input {
+      background-color: #2a2a2a;
+      color: #e0e0e0;
+      border-color: #555;
+    }
+
+    body.dark-mode thead input::placeholder {
+      color: #888;
+    }
+
+    /* Override Bootstrap CSS variables so table-striped uses dark colours */
+    body.dark-mode table.dataTable {
+      --bs-table-bg: #1a1a1a;
+      --bs-table-striped-bg: #1f1f1f;
+      --bs-table-striped-color: #e0e0e0;
+      --bs-table-hover-bg: #3a3a00;
+      --bs-table-hover-color: #ffffa0;
+      --bs-table-color: #e0e0e0;
+      --bs-table-border-color: #333;
+      color: #e0e0e0;
+    }
+
+    body.dark-mode table.dataTable tbody tr,
+    body.dark-mode table.dataTable tbody tr > td,
+    body.dark-mode table.dataTable tbody tr > th {
+      background-color: #1a1a1a !important;
+      color: #e0e0e0 !important;
+      border-color: #333 !important;
+    }
+
+    body.dark-mode table.dataTable tbody tr.even,
+    body.dark-mode table.dataTable tbody tr.even > td,
+    body.dark-mode table.dataTable tbody tr.even > th {
+      background-color: #1f1f1f !important;
+    }
+
+    body.dark-mode table.dataTable tbody tr:hover > td,
+    body.dark-mode table.dataTable tbody tr:hover > th {
+      background-color: #3a3a00 !important;
+      color: #ffffa0 !important;
+    }
+
+    body.dark-mode table.dataTable tbody tr.selected > td,
+    body.dark-mode table.dataTable tbody tr.selected > th {
+      background-color: #1a3a1a !important;
+    }
+
+    body.dark-mode .dataTables_wrapper .dataTables_length,
+    body.dark-mode .dataTables_wrapper .dataTables_filter,
+    body.dark-mode .dataTables_wrapper .dataTables_info,
+    body.dark-mode .dataTables_wrapper .dataTables_paginate {
+      color: #e0e0e0;
+    }
+
+    body.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button {
+      color: #e0e0e0 !important;
+    }
+
+    body.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+      background: #444 !important;
+      border-color: #666 !important;
+      color: #fff !important;
+    }
+
+    body.dark-mode .pagination .page-link {
+      background-color: #2a2a2a;
+      border-color: #555;
+      color: #e0e0e0;
+    }
+    body.dark-mode .pagination .page-link:hover {
+      background-color: #444;
+      border-color: #777;
+      color: #fff;
+    }
+    body.dark-mode .pagination .page-item.active .page-link {
+      background-color: #0d6efd;
+      border-color: #0d6efd;
+      color: #fff;
+    }
+    body.dark-mode .pagination .page-item.disabled .page-link {
+      background-color: #1a1a1a;
+      border-color: #444;
+      color: #555;
+    }
+
+    body.dark-mode .dataTables_wrapper select,
+    body.dark-mode .dataTables_wrapper input[type="search"] {
+      background-color: #2a2a2a;
+      color: #e0e0e0;
+      border-color: #555;
+    }
+
+    body.dark-mode .dt-buttons .btn {
+      background-color: #2a2a2a;
+      color: #e0e0e0;
+      border-color: #555;
+    }
+
+    body.dark-mode .dt-buttons .btn:hover {
+      background-color: #444;
+    }
+
+    body.dark-mode .dt-buttons .btn.btn-warning {
+      background-color: #856404;
+      border-color: #856404;
+      color: #fff;
+    }
+
+    body.dark-mode .form-control,
+    body.dark-mode .form-select {
+      background-color: #2a2a2a;
+      color: #e0e0e0;
+      border-color: #555;
+    }
+
+    body.dark-mode .form-select option {
+      background-color: #2a2a2a;
+    }
+
+    body.dark-mode .btn-outline-secondary {
+      color: #aaa;
+      border-color: #555;
+    }
+
+    body.dark-mode .btn-outline-secondary:hover {
+      background-color: #333;
+      color: #e0e0e0;
+    }
+
+    body.dark-mode #statusMessage {
+      color: #aaa;
+    }
+
+    body.dark-mode .text-muted {
+      color: #aaa !important;
+    }
+
+    body.dark-mode tr.dt-rowgroup-start td {
+      background-color: #2a2a2a !important;
+      color: #e0e0e0;
     }
   </style>
 </head>
-<body class="bg-light">
+<body>
 
+  <!-- ============================================================
+       UI: Top Bar
+  ============================================================ -->
   <div class="container-fluid py-2">
-    <div class="row">
-      <div class="col-md-5"><h3 class="mb-4" style="padding: 0; margin: 0; line-height: 1.0;">CSV Datatables Viewer</h3></div>
-      <div class="col-md-2 d-flex align-items-end"><small class="mb-4">Version 2512G1</small></div>
-      <div class="col-md-5"><input type="file" id="csvFile" accept=".csv" class="form-control mb-4"></div>
+    <div class="row align-items-center mb-2 g-2">
+
+      <!-- Title + version -->
+      <div class="col-auto">
+        <h5 class="mb-0">Datatables Viewer</h5>
+      </div>
+      <div class="col-auto">
+        <small class="text-muted">260320A</small>
+      </div>
+
+      <!-- Spacer -->
+      <div class="col"></div>
+
+      <!-- File Dropdown -->
+      <div class="col-auto" style="min-width:240px;">
+        <select id="fileDropdown" class="form-select form-select-sm" title="Select a file to load">
+          <option value="__scan__">📂 Scan Folder…</option>
+          <option disabled>──────────────────</option>
+          <option value="__upload__">⬆ File Upload…</option>
+        </select>
+        <!-- Hidden file input; only for "File Upload…" option -->
+        <input type="file" id="fileUploadInput" accept=".csv,.xlsx" style="display:none;">
+      </div>
+
+      <!-- Group By Dropdown -->
+      <div class="col-auto" style="min-width:170px;">
+        <select id="groupByDropdown" class="form-select form-select-sm" title="Group rows by column" disabled>
+          <option value="">Group By: None</option>
+        </select>
+      </div>
+
+      <!-- Dark Mode Toggle -->
+      <div class="col-auto">
+        <button id="themeToggle" class="btn btn-sm btn-outline-secondary" title="Toggle dark / light mode">🌙</button>
+      </div>
+
+    </div><!-- /row -->
+
+    <!-- Status message (shown when no file is loaded) -->
+    <div id="statusMessage">Select a file or scan a folder to begin…</div>
+
+    <!-- DataTable wrapper (hidden until a file is loaded) -->
+    <div id="tableWrapper" style="display:none;">
+      <table id="dataTable" class="table table-striped table-hover hover compact" style="width:100%;"></table>
     </div>
-    <div id="loadingMessage">Please choose a file...</div>
-    <table id="iplTable" class="table table-striped table-hover hover compact"></table>
+
+  </div><!-- /container-fluid -->
+
+  <!-- ============================================================
+       UI: Sheet Selection Modal (XLSX multi-sheet files)
+  ============================================================ -->
+  <div class="modal fade" id="sheetModal" tabindex="-1"
+       aria-labelledby="sheetModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="sheetModalLabel">Select Sheet</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="sheetModalBody">
+          <!-- Sheet buttons populated dynamically by FileLoader -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </div>
   </div>
 
+  <!-- ── CDN: jQuery (required by DataTables) ─────────────────── -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+  <!-- ── CDN: Bootstrap 5 JS ──────────────────────────────────── -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- ── CDN: DataTables core + Bootstrap 5 ───────────────────── -->
+  <script src="https://cdn.datatables.net/2.3.4/js/dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/2.3.4/js/dataTables.bootstrap5.min.js"></script>
+
+  <!-- ── CDN: DataTables Buttons ──────────────────────────────── -->
+  <script src="https://cdn.datatables.net/buttons/3.2.5/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/3.2.5/js/buttons.bootstrap5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/3.2.5/js/buttons.colVis.min.js"></script>
+
+  <!-- ── CDN: DataTables RowGroup ─────────────────────────────── -->
+  <script src="https://cdn.datatables.net/rowgroup/1.6.0/js/dataTables.rowGroup.min.js"></script>
+  <script src="https://cdn.datatables.net/rowgroup/1.6.0/js/rowGroup.bootstrap5.min.js"></script>
+
+  <!-- ── CDN: DataTables Responsive ───────────────────────────── -->
+  <script src="https://cdn.datatables.net/responsive/3.0.6/js/dataTables.responsive.min.js"></script>
+  <script src="https://cdn.datatables.net/responsive/3.0.6/js/responsive.bootstrap5.min.js"></script>
+
+  <!-- ── CDN: DataTables Select ───────────────────────────────── -->
+  <script src="https://cdn.datatables.net/select/3.1.3/js/dataTables.select.min.js"></script>
+
+  <!-- ── CDN: Barcode / QR ────────────────────────────────────── -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- ── CDN: SheetJS (XLSX parsing) ──────────────────────────── -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
   <script>
-let qrCodesVisible = false;
-let barCodesVisible = false;
+  'use strict';
 
-function parseCSV(text) {
-  const lines = text.replace(/\r/g, '').split('\n').filter(l => l.length);
-  const headers = lines[0].split(',');
+  // ============================================================
+  // MODULE: Theme Manager
+  // Responsibility: OS theme detection, manual toggle, localStorage persistence.
+  //   Theme is applied exclusively via classList.add/remove('dark-mode').
+  //   No inline styles.
+  // ============================================================
+  const ThemeManager = (() => {
+    const STORAGE_KEY = 'datatables-theme';
+    const DARK_CLASS  = 'dark-mode';
 
-  const data = lines.slice(1).map(line => {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-
-      if (char === '"' && line[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current);
-        current = '';
+    function applyTheme(dark) {
+      if (dark) {
+        document.body.classList.add(DARK_CLASS);
+        document.getElementById('themeToggle').textContent = '☀️';
       } else {
-        current += char;
+        document.body.classList.remove(DARK_CLASS);
+        document.getElementById('themeToggle').textContent = '🌙';
       }
     }
 
-    result.push(current);
-
-    // Ensure row length matches header length
-    while (result.length < headers.length) {
-      result.push('');
+    function isDark() {
+      return document.body.classList.contains(DARK_CLASS);
     }
 
-    return result;
-  });
+    function init() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored !== null) {
+        applyTheme(stored === 'dark');
+      } else {
+        applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches);
+      }
+      document.getElementById('themeToggle').addEventListener('click', () => {
+        const nowDark = !isDark();
+        applyTheme(nowDark);
+        localStorage.setItem(STORAGE_KEY, nowDark ? 'dark' : 'light');
+      });
+    }
 
-  return { headers, data };
-}
+    return { init };
+  })();
 
-function initializeTable(csvText) {
-  const { headers, data } = parseCSV(csvText);
-  
-  if ($.fn.DataTable.isDataTable('#iplTable')) {
-    $('#iplTable').DataTable().destroy();
-    $('#iplTable').empty();
-  }
-  
-  $('#loadingMessage').hide();
-  
-  // Header rows with column titles and search inputs
-  const thead = $('<thead><tr></tr><tr></tr></thead>');
-  headers.forEach(h => {
-    thead.find('tr').first().append(`<th>${h}</th>`);
-    thead.find('tr').last().append(`<th><input type="text" placeholder="Search ${h}" class="form-control form-control-sm" /></th>`);
-  });
-  $('#iplTable').append(thead).append('<tbody></tbody>');
-  
-  const table = $('#iplTable').DataTable({
-    data: data,
-    order: [[1, 'asc']],
-    autoWidth: true,
-    rowGroup: {
-      dataSrc: null,
-      startRender: function (rows, group) {
-        if (group === null || group === undefined) {
-          return '';
+  // ============================================================
+  // MODULE: CSV Parser
+  // Responsibility: Parse raw CSV text into raw { headers, data }.
+  //   Handles quoted fields and escaped double-quotes.
+  //   Output must NOT be passed directly to DataTables — use Data Normalizer.
+  // ============================================================
+  const CSVParser = (() => {
+    function parseLine(line) {
+      const result = [];
+      let current  = '';
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"' && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else if (ch === '"') {
+          inQuotes = !inQuotes;
+        } else if (ch === ',' && !inQuotes) {
+          result.push(current);
+          current = '';
         } else {
-          return group + ' (' + rows.count() + ' items)';
+          current += ch;
         }
       }
-    },
-	select: {
-        style: 'multi'
-    },
-	columns: headers.map((h, index) => {
-	  /*
-	  if (index === 2) { // 3rd column (LOC)
-		return {
-		  title: h,
-		  render: function(data, type, row) {
-			if (typeof data === 'string' && data.startsWith('40')) {
-			  return '<span style="color: #FFF; background-color: #0A0;">' + data + '</span>';
-			}
-			if (typeof data === 'string' && data.startsWith('44')) {
-			  return '<span style="color: #FFF; background-color: #A00;">' + data + '</span>';
-			}
-			return data;
-		  }
-		};
-	  }
-	  */
-	  if (index === 0 || index === 1) { 
-		return {
-			title: h,
-			render: function(data, type, row) {
-				return `
-					<div>
-						<div>${data}</div>
-						<svg class="barcode" data-value="${data}"></svg>
-						<div class="qrcode" data-value="${data}" height=1px></div>
-					</div>
-				`;
-			}
-		};
-	  }
-                // Delay barcode generation until after cell is rendered
-                /*
-				setTimeout(() => {
-                    JsBarcode('#' + barcodeId, data, {format: "CODE128", height: 30, displayValue: false});
-                }, 0);
-				return html;
-				*/
-	  return { title: h };
-	}),
-    orderCellsTop: true,
-    fixedHeader: true,
-    dom: "<'row mb-2'<'col-sm-6'l><'col-sm-6 text-end'B>>" + 
-         "rt" + 
-         "<'row'<'col-sm-5'i><'col-sm-7'p>>",
-    buttons: [
-  	  { 
-	    text: 'Show Selected',
-		className: 'btn-show-selected',
-		action: function (e, dt, node, config) {
-		  const currentText = $(node).text();
-		  
-		  if (currentText === 'Show Selected') {
-		    // Filter to show only selected rows
-		    const selected = dt.rows({ selected: true }).indexes().toArray();
-		    if (selected.length === 0) {
-		      alert('No rows selected');
-		      return;
-		    }
-		    
-		    // Custom search function to show only selected rows
-		    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
-		      return selected.includes(dataIndex);
-		    });
-		    
-		    dt.draw();
-		    $(node).text('Show All');
-		    $(node).addClass('btn-warning');
-		  } else {
-		    // Show all rows again
-		    $.fn.dataTable.ext.search.pop();
-		    dt.draw();
-		    $(node).text('Show Selected');
-		    $(node).removeClass('btn-warning');
-		  }
-		}
-	  },
-	  { 
-	    text: 'QR',
-		action: function (e, dt, node, config) {
-		  toggleQRCodes();
-		  $(node).toggleClass('btn-warning');
-		}
-	  },
-	  { 
-	    text: 'Bar',
-		action: function (e, dt, node, config) {
-		  toggleBarCodes();
-		  $(node).toggleClass('btn-warning');
-		}
-	  },
-      'colvis',
-	  {
-        text: 'GRP C2',
-        action: function (e, dt, node, config) {
-          const rowGroup = dt.rowGroup();
-		  $(node).toggleClass('btn-warning');
-          if (rowGroup.dataSrc() === null) {
-            dt.rowGroup().dataSrc(1);
-            dt.order([[1, 'asc']]).draw();
-          } else {
-            dt.rowGroup().dataSrc(null);
-            dt.draw();
-          }
-        }
-      },
-      {
-        text: 'C3',
-        action: function (e, dt, node, config) {
-          const rowGroup = dt.rowGroup();
-		  $(node).toggleClass('btn-warning');
-          if (rowGroup.dataSrc() === null) {
-            dt.rowGroup().dataSrc(2);
-            dt.order([[2, 'asc']]).draw();
-          } else {
-            dt.rowGroup().dataSrc(null);
-            dt.draw();
-          }
-        }
-      },
-      {
-        text: 'C4',
-        action: function (e, dt, node, config) {
-          const rowGroup = dt.rowGroup();
-		  $(node).toggleClass('btn-warning');
-          if (rowGroup.dataSrc() === null) {
-            dt.rowGroup().dataSrc(3);
-            dt.order([[3, 'asc']]).draw();
-          } else {
-            dt.rowGroup().dataSrc(null);
-            dt.draw();
-          }
-        }
-      },
-	  {
-        text: 'C5',
-        action: function (e, dt, node, config) {
-          const rowGroup = dt.rowGroup();
-		  $(node).toggleClass('btn-warning');
-          if (rowGroup.dataSrc() === null) {
-            dt.rowGroup().dataSrc(4);
-            dt.order([[4, 'asc']]).draw();
-          } else {
-            dt.rowGroup().dataSrc(null);
-            dt.draw();
-          }
-        }
-      },
-	  {
-        text: 'C6',
-        action: function (e, dt, node, config) {
-          const rowGroup = dt.rowGroup();
-		  $(node).toggleClass('btn-warning');
-          if (rowGroup.dataSrc() === null) {
-            dt.rowGroup().dataSrc(5);
-            dt.order([[5, 'asc']]).draw();
-          } else {
-            dt.rowGroup().dataSrc(null);
-            dt.draw();
-          }
-        }
-      },
-	  {
-        text: 'C7',
-        action: function (e, dt, node, config) {
-          const rowGroup = dt.rowGroup();
-		  $(node).toggleClass('btn-warning');
-          if (rowGroup.dataSrc() === null) {
-            dt.rowGroup().dataSrc(6);
-            dt.order([[6, 'asc']]).draw();
-          } else {
-            dt.rowGroup().dataSrc(null);
-            dt.draw();
-          }
-        }
+      result.push(current);
+      return result;
+    }
+
+    function parse(text) {
+      const lines = text.replace(/\r/g, '').split('\n').filter(l => l.length > 0);
+      if (lines.length === 0) return { headers: [], data: [] };
+
+      const headers = parseLine(lines[0]);
+      const data    = lines.slice(1).map(l => {
+        const row = parseLine(l);
+        while (row.length < headers.length) row.push('');
+        return row;
+      });
+      return { headers, data };
+    }
+
+    return { parse };
+  })();
+
+  // ============================================================
+  // MODULE: XLSX Parser
+  // Responsibility: Parse XLSX binary using SheetJS.
+  //   Auto-loads first sheet; exposes all sheet names for modal selection.
+  //   Raw cell values only — no formula evaluation, no formatting.
+  //   Output must NOT be passed directly to DataTables — use Data Normalizer.
+  //
+  //   Library: SheetJS (xlsx) loaded via CDN (cdn.sheetjs.com).
+  // ============================================================
+  const XLSXParser = (() => {
+    function parseSheet(workbook, sheetName) {
+      const sheet = workbook.Sheets[sheetName];
+      // header:1 → first row becomes headers array; raw:true → skip formatting
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+      if (rows.length === 0) return { headers: [], data: [] };
+
+      const headers = rows[0].map(h => String(h ?? ''));
+      const data    = rows.slice(1).map(row =>
+        Array.from({ length: headers.length }, (_, i) => String(row[i] ?? ''))
+      );
+      return { headers, data };
+    }
+
+    function parse(arrayBuffer) {
+      const workbook   = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+      const sheetNames = workbook.SheetNames;
+      return { workbook, sheetNames };
+    }
+
+    function loadSheet(workbook, sheetName) {
+      return parseSheet(workbook, sheetName);
+    }
+
+    return { parse, loadSheet };
+  })();
+
+  // ============================================================
+  // MODULE: Data Normalizer
+  // Responsibility: Mandatory gate between parsers and DataTables.
+  //   Enforces strict data contract: { headers: string[], data: string[][] }.
+  //   Coerces all values to strings; pads short rows; trims excess columns.
+  //   Throws a descriptive error on invalid input.
+  // ============================================================
+  const DataNormalizer = (() => {
+    function normalize(raw) {
+      if (!raw || !Array.isArray(raw.headers) || raw.headers.length === 0) {
+        throw new Error('Normalization failed: headers must be a non-empty array.');
       }
-    ],
-    lengthChange: true,
-    pageLength: 25,
-    lengthMenu: [[10, 25, 50, 100, 250, 500], [10, 25, 50, 100, 250, 500]],
-    responsive: true
-  });
-  
-  // Column search inputs
-  $('#iplTable thead tr:eq(1) th input').each(function (i) {
-    $(this).on('keyup change', function () {
-      if (table.column(i).search() !== this.value) {
-        table.column(i).search(this.value).draw();
+      if (!Array.isArray(raw.data)) {
+        throw new Error('Normalization failed: data must be an array of arrays.');
       }
-    });
-  });
-  
-  function renderBarcodes() {
-    $('#iplTable tbody svg.barcode').each(function() {
-        const value = $(this).data('value');
+
+      const headers  = raw.headers.map(h => String(h ?? '').trim());
+      const colCount = headers.length;
+
+      const data = raw.data.map((row, i) => {
+        if (!Array.isArray(row)) {
+          throw new Error(`Normalization failed: row ${i} is not an array.`);
+        }
+        const normalized = row.slice(0, colCount).map(v => String(v ?? ''));
+        while (normalized.length < colCount) normalized.push('');
+        return normalized;
+      });
+
+      return { headers, data };
+    }
+
+    return { normalize };
+  })();
+
+  // ============================================================
+  // MODULE: File Loader
+  // Responsibility: Folder scan via HTTP directory listing (fetch './');
+  //   populate file dropdown; handle "File Upload…" option; route files to parsers.
+  //
+  //   Folder scan method: fetch('./')  — works with python -m http.server.
+  //     Python's built-in HTTP server returns an HTML directory listing.
+  //     File hrefs matching *.csv / *.xlsx are extracted via regex.
+  //   File upload method: standard <input type="file"> picker (all browsers).
+  // ============================================================
+  const FileLoader = (() => {
+    let currentFileName = '';
+    let currentWorkbook = null;   // held for sheet switching
+
+    function setStatus(msg, isError = false) {
+      const el = document.getElementById('statusMessage');
+      el.textContent   = msg;
+      el.style.color   = isError ? '#c00' : '';
+      el.style.display = '';
+      document.getElementById('tableWrapper').style.display = 'none';
+    }
+
+    // Inserts file entries between "Scan Folder" and the divider/upload options.
+    // Returns sorted list of filenames.
+    function populateDropdown(fileNames) {
+      const select = document.getElementById('fileDropdown');
+      // Remove previously inserted file options (keep slot 0 = __scan__, last two = divider + upload)
+      while (select.options.length > 3) select.remove(1);
+
+      const sorted = [...fileNames].sort((a, b) => a.localeCompare(b));
+      sorted.forEach((name, i) => {
+        select.add(new Option(name, name), 1 + i);
+      });
+      return sorted;
+    }
+
+    // Call the server's /api/files endpoint (served by server.py) to get a JSON
+    // array of .csv / .xlsx filenames.  Much simpler than HTML-listing parsing.
+    async function scanFolder() {
+      setStatus('Scanning folder…');
+      let files = [];
+      try {
+        const response = await fetch('/api/files');
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        files = await response.json();
+      } catch (e) {
+        setStatus('Folder scan failed: ' + e.message + '. Use "File Upload…" to load a file.', true);
+        return [];
+      }
+
+      if (files.length === 0) {
+        setStatus('No .csv or .xlsx files found in folder. Use "File Upload…" to load a file.');
+        return [];
+      }
+
+      const sorted   = populateDropdown(files);
+      const firstCSV = sorted.find(n => /\.csv$/i.test(n));
+      const autoLoad = firstCSV || sorted[0];
+
+      document.getElementById('fileDropdown').value = autoLoad;
+      await loadFileByName(autoLoad);
+      return sorted;
+    }
+
+    async function loadFileByName(name) {
+      currentFileName = name;
+      setStatus('Loading ' + name + '…');
+      try {
+        const response = await fetch('./' + encodeURIComponent(name));
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+
+        if (/\.csv$/i.test(name)) {
+          const text = await response.text();
+          loadThroughNormalizer(CSVParser.parse(text));
+
+        } else if (/\.xlsx$/i.test(name)) {
+          const buffer = await response.arrayBuffer();
+          const { workbook, sheetNames } = XLSXParser.parse(buffer);
+          currentWorkbook = workbook;
+          if (sheetNames.length === 1) {
+            loadThroughNormalizer(XLSXParser.loadSheet(workbook, sheetNames[0]));
+          } else {
+            showSheetModal(workbook, sheetNames);
+          }
+        }
+      } catch (e) {
+        setStatus('Error loading ' + name + ': ' + e.message, true);
+      }
+    }
+
+    async function loadFile(file, name) {
+      currentFileName = name || file.name;
+
+      if (/\.csv$/i.test(currentFileName)) {
+        const text = await file.text();
+        loadThroughNormalizer(CSVParser.parse(text));
+
+      } else if (/\.xlsx$/i.test(currentFileName)) {
+        const buffer = await file.arrayBuffer();
+        const { workbook, sheetNames } = XLSXParser.parse(buffer);
+        currentWorkbook = workbook;
+        if (sheetNames.length === 1) {
+          loadThroughNormalizer(XLSXParser.loadSheet(workbook, sheetNames[0]));
+        } else {
+          showSheetModal(workbook, sheetNames);
+        }
+
+      } else {
+        setStatus('Unsupported file type. Only .csv and .xlsx files are supported.', true);
+      }
+    }
+
+    function loadThroughNormalizer(raw) {
+      let normalized;
+      try {
+        normalized = DataNormalizer.normalize(raw);
+      } catch (e) {
+        setStatus('Data error: ' + e.message, true);
+        return;
+      }
+      TableManager.init(normalized, currentFileName);
+    }
+
+    function showSheetModal(workbook, sheetNames) {
+      const body = document.getElementById('sheetModalBody');
+      body.innerHTML = '';
+
+      sheetNames.forEach(name => {
+        const btn = document.createElement('button');
+        btn.className   = 'btn btn-outline-primary btn-sm me-2 mb-2';
+        btn.textContent = name;
+        btn.addEventListener('click', () => {
+          bootstrap.Modal.getInstance(document.getElementById('sheetModal')).hide();
+          loadThroughNormalizer(XLSXParser.loadSheet(workbook, name));
+        });
+        body.appendChild(btn);
+      });
+
+      new bootstrap.Modal(document.getElementById('sheetModal')).show();
+    }
+
+    function init() {
+      const dropdown    = document.getElementById('fileDropdown');
+      const uploadInput = document.getElementById('fileUploadInput');
+
+      dropdown.addEventListener('change', async function () {
+        const val = this.value;
+
+        if (val === '__scan__') {
+          await scanFolder();
+
+        } else if (val === '__upload__') {
+          // Reset immediately so the user can re-trigger upload later
+          requestAnimationFrame(() => { this.value = currentFileName || '__scan__'; });
+          uploadInput.click();
+
+        } else if (val) {
+          await loadFileByName(val);
+        }
+      });
+
+      uploadInput.addEventListener('change', async function () {
+        const file = this.files[0];
+        if (!file) return;
+
+        if (!/\.(csv|xlsx)$/i.test(file.name)) {
+          setStatus('Invalid file type. Only .csv and .xlsx files are supported.', true);
+          this.value = '';
+          return;
+        }
+
+        await loadFile(file, file.name);
+        this.value = '';
+      });
+
+      // Auto-scan the folder on page load
+      scanFolder();
+    }
+
+    return { init, getCurrentFileName: () => currentFileName };
+  })();
+
+  // ============================================================
+  // MODULE: Grouping Manager
+  // Responsibility: Build dynamic "Group By" dropdown from column headers at runtime.
+  //   No hardcoded column indices. Resets when a new file is loaded.
+  // ============================================================
+  const GroupingManager = (() => {
+    let dtInstance = null;
+
+    function populate(headers) {
+      const select = document.getElementById('groupByDropdown');
+      select.innerHTML = '<option value="">Group By: None</option>';
+      headers.forEach((h, i) => select.add(new Option(h, i)));
+      select.disabled = false;
+    }
+
+    function bindEvents(dt) {
+      dtInstance = dt;
+      const select = document.getElementById('groupByDropdown');
+
+      // Replace listener by cloning to remove any previous listener
+      const fresh = select.cloneNode(true);
+      select.parentNode.replaceChild(fresh, select);
+
+      fresh.addEventListener('change', function () {
+        if (this.value === '') {
+          dt.rowGroup().disable();
+          dt.draw();
+        } else {
+          const colIdx = parseInt(this.value, 10);
+          dt.rowGroup().dataSrc(colIdx);
+          dt.rowGroup().enable();
+          dt.order([[colIdx, 'asc']]).draw();
+        }
+      });
+    }
+
+    function reset() {
+      const select = document.getElementById('groupByDropdown');
+      select.innerHTML = '<option value="">Group By: None</option>';
+      select.disabled  = true;
+      if (dtInstance) { try { dtInstance.rowGroup().disable(); } catch (_) {} }
+    }
+
+    return { populate, bindEvents, reset };
+  })();
+
+  // ============================================================
+  // MODULE: Export Manager
+  // Responsibility: Export filtered + visible rows to a CSV file.
+  //   Prompts user via native browser prompt() pre-filled with the original filename.
+  //   Respects column visibility. Never includes the search header row.
+  // ============================================================
+  const ExportManager = (() => {
+    function csvEscape(value) {
+      if (/[",\r\n]/.test(value)) return '"' + value.replace(/"/g, '""') + '"';
+      return value;
+    }
+
+    function exportCSV(dt, originalFilename) {
+      const base      = (originalFilename || 'export').replace(/\.(csv|xlsx)$/i, '');
+      const suggested = base + '.csv';
+      const filename  = prompt('Save as:', suggested);
+      if (!filename) return;
+
+      const visibleCols = dt.columns(':visible').indexes().toArray();
+
+      const headers = visibleCols
+        .map(i => csvEscape(dt.column(i).header().textContent.trim()));
+
+      const rows = dt.rows({ search: 'applied', order: 'applied' }).data().toArray();
+      const csvRows = rows.map(row =>
+        visibleCols.map(i => csvEscape(String(row[i] ?? ''))).join(',')
+      );
+
+      const content = [headers.join(','), ...csvRows].join('\r\n');
+      const blob    = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+      const url     = URL.createObjectURL(blob);
+
+      const a      = document.createElement('a');
+      a.href       = url;
+      a.download   = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    }
+
+    return { exportCSV };
+  })();
+
+  // ============================================================
+  // MODULE: DataTable Initializer
+  // Responsibility: Consume only normalized { headers, data } from Data Normalizer.
+  //   Configure and render DataTables instance.
+  //   Manages QR / barcode toggle state.
+  //   deferRender: true is always enabled for performance (target: 10,000 rows).
+  // ============================================================
+  const TableManager = (() => {
+    const TABLE_ID = 'dataTable';
+    let qrVisible  = false;
+    let barVisible = false;
+
+    // Converts Excel serial date numbers to ISO YYYY-MM-DD strings.
+    // Values ≤ 40000 are treated as non-date numbers and returned as-is.
+    function excelSerialToISO(value) {
+      if (value === null || value === undefined || value === '') return '';
+      const num = Number(value);
+      if (isNaN(num) || num <= 40000) return value;
+      const d = new Date((num - 25569) * 86400 * 1000);
+      // Guard against out-of-range values (e.g. phone numbers stored as raw numbers)
+      if (isNaN(d.getTime())) return value;
+      return d.toISOString().slice(0, 10);
+    }
+
+    // Builds the DataTables columns config from normalized headers.
+    // Columns 0 and 1 include QR / barcode wrapper markup.
+    // All columns apply excelSerialToISO for display.
+    function buildColumns(headers) {
+      return headers.map((h, index) => {
+        if (index === 0 || index === 1) {
+          return {
+            title: h,
+            render(data, type) {
+              if (type === 'display') {
+                const display = excelSerialToISO(data);
+                const safeAttr = String(data ?? '')
+                  .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+                const safeHtml = String(display ?? '')
+                  .replace(/&/g, '&amp;').replace(/</g, '&lt;');
+                return `<div>
+                  <div>${safeHtml}</div>
+                  <svg class="barcode" data-value="${safeAttr}"></svg>
+                  <div class="qrcode"  data-value="${safeAttr}"></div>
+                </div>`;
+              }
+              return data;
+            }
+          };
+        }
+        return {
+          title: h,
+          render(data, type) {
+            if (type === 'display') return excelSerialToISO(data);
+            return data;
+          }
+        };
+      });
+    }
+
+    // Renders CODE128 barcodes for all visible barcode SVGs on the current page.
+    // Skips already-rendered elements. Silently skips values invalid for CODE128.
+    function renderBarcodes() {
+      $(`#${TABLE_ID} tbody svg.barcode`).each(function () {
         if (!$(this).data('rendered')) {
-            JsBarcode(this, value, { format: "CODE128", height: 15, margin: 5, displayValue: false });
+          try {
+            JsBarcode(this, $(this).data('value'),
+              { format: 'CODE128', height: 15, margin: 5, displayValue: false });
             $(this).data('rendered', true);
+          } catch (_) { /* invalid barcode value — skip silently */ }
         }
-    });
-  }
-  
-  function renderQRCodes() {
-    $('#iplTable tbody div.qrcode').each(function() {
-        const value = String($(this).data('value'));
+      });
+    }
+
+    // Renders QR codes for all visible qrcode divs on the current page.
+    // Skips already-rendered elements.
+    function renderQRCodes() {
+      $(`#${TABLE_ID} tbody div.qrcode`).each(function () {
         if (!$(this).data('rendered')) {
+          try {
             new QRCode(this, {
-                text: value,
-                width: 50,   // width of QR code
-                height: 50,  // height of QR code
-                correctLevel: QRCode.CorrectLevel.H
+              text:         String($(this).data('value')),
+              width:        50,
+              height:       50,
+              correctLevel: QRCode.CorrectLevel.H
             });
             $(this).data('rendered', true);
+          } catch (_) { /* invalid QR value — skip silently */ }
         }
-    });
-  }
-  
-  function toggleQRCodes() {
-    qrCodesVisible = !qrCodesVisible;
-    
-    if (qrCodesVisible) {
-      $('#iplTable tbody div.qrcode').addClass('show');
-      renderQRCodes();
-    } else {
-      $('#iplTable tbody div.qrcode').removeClass('show');
+      });
     }
-  }
 
-  function toggleBarCodes() {
-    barCodesVisible = !barCodesVisible;
-    
-    if (barCodesVisible) {
-      $('#iplTable tbody svg.barcode').addClass('show');
-      renderBarcodes();
-    } else {
-      $('#iplTable tbody svg.barcode').removeClass('show');
+    function toggleQR(btnNode) {
+      qrVisible = !qrVisible;
+      $(`#${TABLE_ID} tbody div.qrcode`).toggleClass('show', qrVisible);
+      if (qrVisible) renderQRCodes();
+      $(btnNode).toggleClass('btn-warning', qrVisible);
     }
-  }
-  
-  // After table initialization
-  //renderBarcodes();
-  //renderQRCodes();   // initial render
 
-  //table.on('draw', renderBarcodes);
-  //table.on('draw', renderQRCodes);  // redraw after filtering, paging, sorting
-}
+    function toggleBar(btnNode) {
+      barVisible = !barVisible;
+      $(`#${TABLE_ID} tbody svg.barcode`).toggleClass('show', barVisible);
+      if (barVisible) renderBarcodes();
+      $(btnNode).toggleClass('btn-warning', barVisible);
+    }
 
-$(document).ready(function () {
-  // Auto-load picklists.csv on page load
-  /*
-  fetch('./picklists.csv')
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Could not load picklists.csv');
+    // Creates an isolated "Show Selected" filter that can be toggled on/off.
+    // Uses a closure-captured filter function reference so it can be cleanly removed.
+    function buildShowSelectedFilter(dt) {
+      let active          = false;
+      let selectedIndexes = [];
+
+      function filterFn(settings, data, dataIndex) {
+        return !active || selectedIndexes.includes(dataIndex);
       }
-      return response.text();
-    })
-    .then(csvText => {
-      initializeTable(csvText);
-    })
-    .catch(error => {
-      $('#loadingMessage').text('Error loading picklists.csv: ' + error.message).css('color', 'red');
-      console.error('Error:', error);
-    });
-  */
-  
-  // File input for loading other CSV files
-  $('#csvFile').on('change', function (e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      const csvText = e.target.result;
-      initializeTable(csvText);
-    };
-    reader.readAsText(file);
+
+      return {
+        toggle(btnNode) {
+          active = !active;
+          if (active) {
+            selectedIndexes = dt.rows({ selected: true }).indexes().toArray();
+            if (selectedIndexes.length === 0) {
+              active = false;
+              alert('No rows selected.');
+              return;
+            }
+            $.fn.dataTable.ext.search.push(filterFn);
+            $(btnNode).text('Show All').addClass('btn-warning');
+          } else {
+            const idx = $.fn.dataTable.ext.search.indexOf(filterFn);
+            if (idx > -1) $.fn.dataTable.ext.search.splice(idx, 1);
+            $(btnNode).text('Show Selected').removeClass('btn-warning');
+          }
+          dt.draw();
+        },
+        cleanup() {
+          // Called on table destroy to remove dangling search functions
+          if (active) {
+            const idx = $.fn.dataTable.ext.search.indexOf(filterFn);
+            if (idx > -1) $.fn.dataTable.ext.search.splice(idx, 1);
+          }
+        }
+      };
+    }
+
+    // Tracks the active show-selected filter so it can be cleaned up on re-init
+    let activeShowSelectedFilter = null;
+
+    function init(normalized, filename) {
+      const { headers, data } = normalized;
+
+      // ── Tear down existing instance ────────────────────────────
+      // GroupingManager.reset() must run before destroy() — calling rowGroup()
+      // on a destroyed DataTable throws, which would prevent populate() from running.
+      GroupingManager.reset();
+      if ($.fn.DataTable.isDataTable(`#${TABLE_ID}`)) {
+        if (activeShowSelectedFilter) {
+          activeShowSelectedFilter.cleanup();
+          activeShowSelectedFilter = null;
+        }
+        $(`#${TABLE_ID}`).DataTable().destroy();
+        $(`#${TABLE_ID}`).empty();
+      }
+
+      qrVisible  = false;
+      barVisible = false;
+
+      // ── Build thead: title row + per-column search row ─────────
+      const $thead     = $('<thead>');
+      const $headerRow = $('<tr>');
+      const $searchRow = $('<tr>');
+
+      headers.forEach(h => {
+        $headerRow.append($('<th>').text(h));
+        $searchRow.append(
+          $('<th>').append(
+            $('<input type="text" class="form-control form-control-sm">')
+              .attr('placeholder', `Search ${h}`)
+          )
+        );
+      });
+
+      $(`#${TABLE_ID}`)
+        .append($thead.append($headerRow).append($searchRow))
+        .append('<tbody>');
+
+      // ── Show table area ────────────────────────────────────────
+      document.getElementById('statusMessage').style.display = 'none';
+      document.getElementById('tableWrapper').style.display  = '';
+
+      // ── Initialise DataTables ──────────────────────────────────
+      const columns = buildColumns(headers);
+
+      const dt = $(`#${TABLE_ID}`).DataTable({
+        data,
+        columns,
+        deferRender:    true,         // required for performance (up to 10k rows)
+        autoWidth:      true,
+        orderCellsTop:  true,
+        fixedHeader:    true,
+        pageLength:     25,
+        lengthMenu:     [[10, 25, 50, 100, 250], [10, 25, 50, 100, 250]],
+        select:         { style: 'multi' },
+        rowGroup: {
+          enable: false,  // start ungrouped; GroupingManager enables on demand
+          dataSrc: 0,     // default column index (overridden dynamically)
+          startRender(rows, group) {
+            if (group === null || group === undefined) return '';
+            return `${group} (${rows.count()} items)`;
+          }
+        },
+        responsive: true,
+        dom:
+          "<'row mb-2 align-items-center'<'col-4'l><'col-8 text-end'B>>" +
+          'rt' +
+          "<'row'<'col-sm-6'p><'col-sm-6 text-end'i>>",
+        buttons: {
+          dom: { button: { className: 'btn btn-sm' } },
+          buttons: [
+          {
+            text: 'QR',
+            action(e, _dt, node) { toggleQR(node); }
+          },
+          {
+            text: 'Bar',
+            action(e, _dt, node) { toggleBar(node); }
+          },
+          {
+            text: 'Show Selected',
+            action(e, _dt, node) {
+              showSelectedFilter.toggle(node);
+            }
+          },
+          'colvis',
+          {
+            text: 'Export CSV',
+            action() { ExportManager.exportCSV(dt, filename); }
+          }
+          ]
+        }
+      });
+
+      // showSelectedFilter references dt, so must be created after DataTable init.
+      // The button action closures capture this variable by reference and only
+      // call it on user interaction — by that time it is always initialised.
+      const showSelectedFilter = buildShowSelectedFilter(dt);
+      activeShowSelectedFilter = showSelectedFilter;
+
+      // ── Wire per-column search inputs ─────────────────────────
+      $(`#${TABLE_ID} thead tr:eq(1) th input`).each(function (i) {
+        $(this).on('keyup change', function () {
+          if (dt.column(i).search() !== this.value) {
+            dt.column(i).search(this.value).draw();
+          }
+        });
+      });
+
+      // ── Re-render QR / barcodes on every draw if visible ──────
+      dt.on('draw', () => {
+        if (barVisible) renderBarcodes();
+        if (qrVisible)  renderQRCodes();
+      });
+
+      // ── Populate dynamic Grouping dropdown ────────────────────
+      GroupingManager.populate(headers);
+      GroupingManager.bindEvents(dt);
+    }
+
+    return { init };
+  })();
+
+  // ============================================================
+  // Bootstrap — initialise all modules once the DOM is ready
+  // ============================================================
+  document.addEventListener('DOMContentLoaded', () => {
+    ThemeManager.init();
+    FileLoader.init();
   });
-});
   </script>
 
 </body>
