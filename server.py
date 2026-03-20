@@ -2,41 +2,48 @@
 Simple HTTP server for the datatables viewer.
 Serves the current directory at http://localhost:8000/
 
-Key difference from plain `python -m http.server`:
-  Always returns a real directory listing for folder requests instead of
-  silently falling back to index.html. This lets the browser-side folder
-  scan (fetch('./')) find .csv and .xlsx files reliably.
+Extra endpoint:
+  GET /api/files  — returns a JSON array of all .csv and .xlsx filenames
+                    in the served directory, sorted alphabetically.
+                    Used by the browser-side folder scan in index.html.
 
 Press Ctrl+C to stop gracefully.
 """
 import http.server
+import json
 import os
 import sys
 
 PORT = 8000
 
 
-class DirectoryListingHandler(http.server.SimpleHTTPRequestHandler):
-    """Like SimpleHTTPRequestHandler but never auto-serves index.html for directories.
+class FilesAPIHandler(http.server.SimpleHTTPRequestHandler):
+    """Like SimpleHTTPRequestHandler but adds GET /api/files.
 
-    python -m http.server normally returns index.html when it exists in a
-    directory. That breaks the client-side fetch('./') folder scan because the
-    response is the app HTML, not a listing with .csv/.xlsx hrefs.
-    Overriding send_head() so directory paths always trigger list_directory().
+    The browser calls fetch('/api/files') to discover available CSV/XLSX files
+    without any HTML-parsing hacks or directory-listing conflicts.
+    All other requests (including GET /) are handled by the base class, so
+    index.html is served normally at http://localhost:8000/.
     """
 
-    def send_head(self):
-        path = self.translate_path(self.path)
-        if os.path.isdir(path):
-            # Redirect if the trailing slash is missing (same as base class)
-            if not self.path.endswith('/'):
-                self.send_response(301)
-                self.send_header('Location', self.path + '/')
-                self.end_headers()
-                return None
-            # Always return the real directory listing, never index.html
-            return self.list_directory(path)
-        return super().send_head()
+    def do_GET(self):
+        if self.path == '/api/files':
+            self._serve_files_json()
+        else:
+            super().do_GET()
+
+    def _serve_files_json(self):
+        root = os.path.dirname(os.path.abspath(__file__))
+        files = sorted(
+            f for f in os.listdir(root)
+            if f.lower().endswith('.csv') or f.lower().endswith('.xlsx')
+        )
+        body = json.dumps(files).encode('utf-8')
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     # Suppress per-request log noise; remove this method to re-enable logging.
     def log_message(self, fmt, *args):
@@ -46,7 +53,7 @@ class DirectoryListingHandler(http.server.SimpleHTTPRequestHandler):
 def main():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-    with http.server.HTTPServer(('', PORT), DirectoryListingHandler) as httpd:
+    with http.server.HTTPServer(('', PORT), FilesAPIHandler) as httpd:
         print(f'Serving at http://localhost:{PORT}/')
         print('Press Ctrl+C to stop.')
         try:

@@ -517,18 +517,15 @@
       return sorted;
     }
 
-    // Fetch the HTTP server's directory listing and extract .csv / .xlsx filenames.
-    // Works with python -m http.server which returns an HTML listing for directory URLs.
+    // Call the server's /api/files endpoint (served by server.py) to get a JSON
+    // array of .csv / .xlsx filenames.  Much simpler than HTML-listing parsing.
     async function scanFolder() {
       setStatus('Scanning folder…');
       let files = [];
       try {
-        const response = await fetch('./');
+        const response = await fetch('/api/files');
         if (!response.ok) throw new Error('HTTP ' + response.status);
-        const html = await response.text();
-        // Match href values that look like bare filenames (no path separators / query strings)
-        const matches = [...html.matchAll(/href="([^"/?#][^"]*\.(csv|xlsx))"/gi)];
-        files = matches.map(m => decodeURIComponent(m[1]));
+        files = await response.json();
       } catch (e) {
         setStatus('Folder scan failed: ' + e.message + '. Use "File Upload…" to load a file.', true);
         return [];
@@ -774,7 +771,10 @@
       if (value === null || value === undefined || value === '') return '';
       const num = Number(value);
       if (isNaN(num) || num <= 40000) return value;
-      return new Date((num - 25569) * 86400 * 1000).toISOString().slice(0, 10);
+      const d = new Date((num - 25569) * 86400 * 1000);
+      // Guard against out-of-range values (e.g. phone numbers stored as raw numbers)
+      if (isNaN(d.getTime())) return value;
+      return d.toISOString().slice(0, 10);
     }
 
     // Builds the DataTables columns config from normalized headers.
