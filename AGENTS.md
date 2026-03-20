@@ -6,6 +6,19 @@ This project is currently internal but designed to mature into public open-sourc
 
 ---
 
+# 0. Running Locally
+
+```bash
+python -m http.server 8000
+```
+
+Open `http://localhost:8000/index.html`
+
+> The folder-scan auto-load feature requires HTTP — it will **not** work via `file://`.
+> No build, lint, or test commands exist — this is a static HTML/JS/CSS project.
+
+---
+
 # 1. Core Philosophy
 
 > Lightweight, offline, general-purpose data inspector.
@@ -267,10 +280,10 @@ All loaded via CDN — no local install:
 
 | File | Purpose |
 |---|---|
-| `index.html` | Target application — entire app lives here |
+| `index.html` | Application — entire app lives here |
 | `README.md` | Project documentation |
 | `AGENTS.md` | Agent & contributor rules (this file) |
-| `CLAUDE.md` | Claude Code project instructions (mirrors AGENTS.md) |
 | `PROJECT_CHECKLIST.md` | Phased implementation tracker (Phases 1–11) |
 | `*.csv` | Sample data files for testing |
 | `*.xlsx` | Sample data files for testing |
+| `CSV_Viewer.html` | Legacy reference — do not modify |
