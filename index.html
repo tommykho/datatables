@@ -3,7 +3,7 @@
   datatables.html
   Offline, server-less, single-file CSV / XLSX data inspector.
   License: MIT (placeholder — programmer must add licence text before release)
-  Version: [VERSION — programmer sets this; see AGENTS.md §11]
+  Version: 260320A
 -->
 <html lang="en">
 <head>
@@ -1005,8 +1005,10 @@
         dom:
           "<'row mb-2 align-items-center'<'col-4'l><'col-8 text-end'B>>" +
           'rt' +
-          "<'row'<'col-sm-6'i><'col-sm-6 text-end'p>>",
-        buttons: [
+          "<'row'<'col-sm-6'p><'col-sm-6 text-end'i>>",
+        buttons: {
+          dom: { button: { className: 'btn btn-sm' } },
+          buttons: [
           {
             text: 'Show Selected',
             action(e, _dt, node) {
@@ -1026,7 +1028,8 @@
             text: 'Export CSV',
             action() { ExportManager.exportCSV(dt, filename); }
           }
-        ]
+          ]
+        }
       });
 
       // showSelectedFilter references dt, so must be created after DataTable init.
