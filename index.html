@@ -70,6 +70,17 @@
       padding: 0.2rem 0.5rem;
     }
 
+    /* DT2's Bootstrap5 CSS can override Bootstrap grid widths on .row children;
+       reassert col-2 / col-10 for the length+buttons toolbar row. */
+    .dataTables_wrapper .row > .col-2 {
+      flex: 0 0 16.666667%;
+      width: 16.666667%;
+    }
+    .dataTables_wrapper .row > .col-10 {
+      flex: 0 0 83.333333%;
+      width: 83.333333%;
+    }
+
     .qrcode        { display: none; }
     .qrcode.show   { display: block; }
     .barcode       { display: none; }
