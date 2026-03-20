@@ -75,6 +75,8 @@
     .barcode       { display: none; }
     .barcode.show  { display: block; }
 
+    .dataTables_paginate .pagination { justify-content: flex-end; }
+
     /* ============================================================
        STYLES: Dark Mode — all rules scoped to body.dark-mode only.
        No inline styles are applied by JavaScript.
@@ -168,6 +170,27 @@
       background: #444 !important;
       border-color: #666 !important;
       color: #fff !important;
+    }
+
+    body.dark-mode .pagination .page-link {
+      background-color: #2a2a2a;
+      border-color: #555;
+      color: #e0e0e0;
+    }
+    body.dark-mode .pagination .page-link:hover {
+      background-color: #444;
+      border-color: #777;
+      color: #fff;
+    }
+    body.dark-mode .pagination .page-item.active .page-link {
+      background-color: #0d6efd;
+      border-color: #0d6efd;
+      color: #fff;
+    }
+    body.dark-mode .pagination .page-item.disabled .page-link {
+      background-color: #1a1a1a;
+      border-color: #444;
+      color: #555;
     }
 
     body.dark-mode .dataTables_wrapper select,
