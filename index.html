@@ -276,6 +276,23 @@
         </select>
       </div>
 
+      <!-- Column Visibility (populated + shown after file load) -->
+      <div class="col-auto" id="colvisWrapper" style="display:none;">
+        <div class="dropdown">
+          <button class="btn btn-sm btn-secondary dropdown-toggle" type="button"
+                  id="colvisBtn" data-bs-toggle="dropdown"
+                  data-bs-auto-close="outside" aria-expanded="false">
+            Column visibility
+          </button>
+          <ul class="dropdown-menu" id="colvisMenu" aria-labelledby="colvisBtn"></ul>
+        </div>
+      </div>
+
+      <!-- Export CSV (wired after file load) -->
+      <div class="col-auto" id="exportCsvWrapper" style="display:none;">
+        <button id="exportCsvBtn" class="btn btn-sm btn-secondary" type="button">Export CSV</button>
+      </div>
+
       <!-- Dark Mode Toggle -->
       <div class="col-auto">
         <button id="themeToggle" class="btn btn-sm btn-outline-secondary" title="Toggle dark / light mode">🌙</button>
@@ -1008,18 +1025,8 @@
           {
             text: 'Bar',
             action(e, _dt, node) { toggleBar(node); }
-          },
-          {
-            extend: 'collection',
-            text: 'View / Export',
-            buttons: [
-              'colvis',
-              {
-                text: 'Export CSV',
-                action() { ExportManager.exportCSV(dt, filename); }
-              }
-            ]
           }
+          /* colvis and Export CSV are rendered in the navbar — see #colvisWrapper / #exportCsvWrapper */
         ]
       });
 
@@ -1043,6 +1050,38 @@
         if (barVisible) renderBarcodes();
         if (qrVisible)  renderQRCodes();
       });
+
+      // ── Wire navbar Column Visibility dropdown ────────────────
+      const colvisMenu    = document.getElementById('colvisMenu');
+      const colvisWrapper = document.getElementById('colvisWrapper');
+      colvisMenu.innerHTML = '';
+      headers.forEach((title, i) => {
+        const li  = document.createElement('li');
+        const a   = document.createElement('a');
+        const chk = document.createElement('input');
+        chk.type    = 'checkbox';
+        chk.checked = true;
+        chk.className = 'form-check-input me-2';
+        a.className = 'dropdown-item d-flex align-items-center';
+        a.href = '#';
+        a.appendChild(chk);
+        a.appendChild(document.createTextNode(title));
+        a.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          chk.checked = !chk.checked;
+          dt.column(i).visible(chk.checked);
+        });
+        li.appendChild(a);
+        colvisMenu.appendChild(li);
+      });
+      colvisWrapper.style.display = '';
+
+      // ── Wire navbar Export CSV button ─────────────────────────
+      const exportWrapper = document.getElementById('exportCsvWrapper');
+      const exportBtn     = document.getElementById('exportCsvBtn');
+      exportBtn.onclick   = () => ExportManager.exportCSV(dt, filename);
+      exportWrapper.style.display = '';
 
       // ── Populate dynamic Grouping dropdown ────────────────────
       GroupingManager.populate(headers);
