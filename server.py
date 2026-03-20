@@ -7,12 +7,14 @@ Extra endpoint:
                     in the served directory, sorted alphabetically.
                     Used by the browser-side folder scan in index.html.
 
-Press Ctrl+C to stop gracefully.
+Press Ctrl+C to stop.
 """
 import http.server
 import json
 import os
 import sys
+import threading
+import time
 
 PORT = 8000
 
@@ -20,9 +22,8 @@ PORT = 8000
 class FilesAPIHandler(http.server.SimpleHTTPRequestHandler):
     """Like SimpleHTTPRequestHandler but adds GET /api/files.
 
-    The browser calls fetch('/api/files') to discover available CSV/XLSX files
-    without any HTML-parsing hacks or directory-listing conflicts.
-    All other requests (including GET /) are handled by the base class, so
+    The browser calls fetch('/api/files') to discover available CSV/XLSX files.
+    All other requests (including GET /) fall through to the base class, so
     index.html is served normally at http://localhost:8000/.
     """
 
@@ -45,22 +46,33 @@ class FilesAPIHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    # Suppress per-request log noise; remove this method to re-enable logging.
     def log_message(self, fmt, *args):
-        pass
+        pass  # suppress per-request log noise
 
 
 def main():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
     with http.server.HTTPServer(('', PORT), FilesAPIHandler) as httpd:
+        # Run the server in a daemon thread.
+        # serve_forever() blocks on select() internally, which does not reliably
+        # receive Ctrl-C (SIGINT) on Windows.  Sleeping in the main thread does,
+        # so Ctrl-C is caught here and we call shutdown() to stop the server thread.
+        t = threading.Thread(target=httpd.serve_forever, daemon=True)
+        t.start()
+
         print(f'Serving at http://localhost:{PORT}/')
         print('Press Ctrl+C to stop.')
+
         try:
-            httpd.serve_forever()
+            while True:
+                time.sleep(1)
         except KeyboardInterrupt:
-            print('\nServer stopped.')
-            sys.exit(0)
+            print('\nStopping...')
+            httpd.shutdown()
+
+    print('Server stopped.')
+    sys.exit(0)
 
 
 if __name__ == '__main__':
