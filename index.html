@@ -1069,7 +1069,9 @@
         a.addEventListener('click', e => {
           e.preventDefault();
           e.stopPropagation();
-          chk.checked = !chk.checked;
+          // If the checkbox itself was clicked, the browser already toggled it;
+          // only manually toggle when the click landed on the label/text area.
+          if (e.target !== chk) chk.checked = !chk.checked;
           dt.column(i).visible(chk.checked);
         });
         li.appendChild(a);
