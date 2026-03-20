@@ -1010,18 +1010,18 @@
           dom: { button: { className: 'btn btn-sm' } },
           buttons: [
           {
-            text: 'Show Selected',
-            action(e, _dt, node) {
-              showSelectedFilter.toggle(node);
-            }
-          },
-          {
             text: 'QR',
             action(e, _dt, node) { toggleQR(node); }
           },
           {
             text: 'Bar',
             action(e, _dt, node) { toggleBar(node); }
+          },
+          {
+            text: 'Show Selected',
+            action(e, _dt, node) {
+              showSelectedFilter.toggle(node);
+            }
           },
           'colvis',
           {

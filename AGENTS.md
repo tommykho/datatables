@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidelines for AI agents and contributors.
+Guidelines for AI agents and contributors working on this codebase.
 
 This project is currently internal but designed to mature into public open-source (MIT).
 
@@ -8,15 +8,13 @@ This project is currently internal but designed to mature into public open-sourc
 
 # 1. Core Philosophy
 
-This is a:
-
 > Lightweight, offline, general-purpose data inspector.
 
-It must remain:
+Must remain:
 
 - 100% static
 - Server-less
-- Single HTML file
+- Single HTML file (`index.html`)
 - Modular in structure (even within one file)
 
 ---
@@ -28,23 +26,34 @@ It must remain:
 All logic must reside in:
 
 ```
-datatables.html
+index.html
 ```
 
-Code must be structured modularly — organized as clearly labeled, small-function sections within the single file. No strict ES6 module enforcement is required, but functions must remain small and focused. No large monolithic functions.
+Code must be structured modularly — organized as clearly labeled sections within the single file.
+No strict ES6 module enforcement is required, but functions must remain small and focused.
+No large monolithic functions.
 
 ## Module Sections (Required Labels)
 
-Each section must be clearly labeled with a comment block. Modules and their responsibilities are:
+Each section must use this exact comment header format:
+
+```js
+// ============================================================
+// MODULE: <Name>
+// Responsibility: <description>
+// ============================================================
+```
+
+Defined modules and their responsibilities:
 
 | Module | Responsibility |
 |---|---|
 | File Loader | Scans folder for CSV/XLSX files; populates dropdown; handles "File Upload..." option |
-| CSV Parser | Reads raw CSV text; outputs normalized `{ headers, data }` |
-| XLSX Parser | Reads XLSX binary; auto-loads first sheet; supports modal sheet selection; outputs normalized `{ headers, data }` |
+| CSV Parser | Reads raw CSV text; outputs `{ headers, data }` |
+| XLSX Parser | Reads XLSX binary; auto-loads first sheet; modal for multi-sheet; outputs `{ headers, data }` |
 | Data Normalizer | Receives parser output; enforces data contract before passing to DataTables |
 | DataTable Initializer | Consumes only normalized data; configures and renders DataTables instance |
-| Theme Manager | Detects OS preference; handles manual toggle; persists override to localStorage |
+| Theme Manager | Detects OS preference; handles manual toggle; persists override to `localStorage` |
 | Grouping Manager | Builds dynamic grouping controls from column headers; no hardcoded column indices |
 | Export Manager | Exports filtered rows; prompts user for filename via native browser `prompt()` |
 
@@ -61,26 +70,20 @@ All parsers must output:
 }
 ```
 
-DataTables must **only** consume normalized data from the Data Normalizer.
-
+DataTables must **only** consume normalized data from `normalizeData()`.
 Never pass raw parser output directly to DataTables.
 
 ---
 
 # 4. Theme System Rules
 
-- Detect OS theme on first load using `window.matchMedia('(prefers-color-scheme: dark)')`
+- Detect OS theme on first load via `window.matchMedia('(prefers-color-scheme: dark)')`
 - Allow manual toggle
 - Manual override stored in `localStorage`
-- Apply theme exclusively via:
-
-```css
-body.dark-mode
-```
-
+- Apply theme exclusively via `body.dark-mode` CSS class
 - JS theming must only use `classList.add('dark-mode')` / `classList.remove('dark-mode')`
-- No inline styling allowed
-- All visual theming must be CSS-based
+- **No inline styling allowed** — all visual theming must be CSS-based
+- Dark mode must cover Bootstrap pagination elements (`.page-link`, `.page-item.active`, `.page-item.disabled`)
 
 ---
 
@@ -88,7 +91,7 @@ body.dark-mode
 
 Target max dataset: **10,000 rows**
 
-Must include:
+Must always set:
 
 ```js
 deferRender: true
@@ -108,9 +111,7 @@ Export must:
 
 - Export filtered rows only
 - Respect column visibility
-- Prompt user to rename file using **native browser `prompt()`**, pre-filled with the original filename
-- Allow the user to edit the filename freely before confirming
-- Default filename = original filename (without re-extension logic)
+- Prompt user to rename via native browser `prompt()`, pre-filled with the original filename
 - Never export the search header row
 
 ---
@@ -118,7 +119,7 @@ Export must:
 # 7. Grouping Rules
 
 - Grouping must be dynamic — generated from actual column headers at runtime
-- Hardcoded column references (e.g., C2–C7 buttons) are **prohibited**
+- Hardcoded column references are **prohibited**
 - Must allow grouping by any column index
 
 ---
@@ -134,53 +135,95 @@ Export must:
 
 ### Method 1: Folder Scan (Primary)
 
-On page load, the app scans the folder where `datatables.html` resides for all `.csv` and `.xlsx` files. These are listed in a dropdown selector, sorted alphabetically. The first file in the list is auto-loaded on startup.
-
-> Implementation: Use the File System Access API or equivalent static folder parsing available in the deployment context. Document the chosen method in code comments.
+On page load, the app scans the folder where `index.html` resides for all `.csv` and `.xlsx` files.
+Files listed alphabetically. First file auto-loaded on startup.
 
 ### Method 2: File Upload (Secondary)
 
-The dropdown must include a persistent **"File Upload..."** option at the bottom of the list. Selecting it opens a native OS file picker filtered to `.csv` and `.xlsx`. The selected file is then loaded as if it were a folder file.
+Dropdown must include a persistent **"File Upload..."** option at the bottom.
+Selecting it opens a native OS file picker filtered to `.csv` and `.xlsx`.
+Selected file is then loaded identically to a folder file.
 
 ## XLSX Behavior
 
 - Auto-load the first sheet on file open
 - If the file has multiple sheets, display a modal for sheet selection
-- Only raw cell values are supported (no formulas, no formatting)
+- Only raw cell values supported (no formulas, no formatting)
 
 ---
 
-# 9. Code Style Expectations
+# 9. DataTables Configuration Rules
 
-- ES6+ syntax
-- Use `const` / `let`; never `var`
-- Minimize global variables — prefer passing data through function arguments
-- Keep functions small and single-purpose
-- Keep jQuery usage only where required by DataTables API
-- Prefer named functions over anonymous callbacks for readability
-- Label every module section with a clear comment header, e.g.:
+## DOM Layout
 
 ```js
-// ============================================================
-// MODULE: Theme Manager
-// Responsibility: OS detection, manual toggle, localStorage
-// ============================================================
+dom:
+  "<'row mb-2 align-items-center'<'col-4'l><'col-8 text-end'B>>" +
+  'rt' +
+  "<'row'<'col-sm-6'p><'col-sm-6 text-end'i>>",
 ```
+
+- `l` (length) — left, col-4
+- `B` (buttons) — right, col-8
+- `p` (pagination) — left, col-sm-6
+- `i` (info) — right, col-sm-6
+
+## Pagination
+
+- Classic pagination only — 10 / 25 / 50 / 100 / 250
+- `deferRender: true` always set
+- **No virtual scrolling**
+- Pagination `<ul>` right-alignment: `justify-content: flex-end` CSS rule
+
+## Buttons
+
+Buttons config must use the `dom.button.className` override to remove `btn-secondary`:
+
+```js
+buttons: {
+  dom: { button: { className: 'btn btn-sm' } },
+  buttons: [...]
+}
+```
+
+Button order (left to right in toolbar):
+
+| # | Button | Notes |
+|---|---|---|
+| 1 | QR | Lazy render — never auto on load |
+| 2 | Bar | Lazy render — never auto on load |
+| 3 | Show Selected | Filters table to selected rows |
+| 4 | colvis | Column visibility |
+| 5 | Export CSV | Filtered rows only |
 
 ---
 
-# 10. Do Not
+# 10. Code Style
+
+- ES6+ syntax
+- `const` / `let` only — never `var`
+- Minimize globals — pass data through function arguments
+- Keep functions small and single-purpose
+- jQuery only where required by DataTables API
+- Named functions preferred over anonymous callbacks
+
+---
+
+# 11. Do Not
 
 - Do not introduce backend dependencies
 - Do not remove existing features
 - Do not remove QR/Barcode capability
 - Do not change versioning format
 - Do not replace pagination with virtual scrolling
-- Do not implement any item listed under Section 12 (Roadmap) — those are planning notes only
+- Do not add inline styles — use `body.dark-mode` CSS class only
+- Do not hardcode column indices
+- Do not auto-render QR or barcodes on page load
+- Do not implement Roadmap items — those are planning notes only
 
 ---
 
-# 11. Versioning Rules
+# 12. Versioning Rules
 
 ## Format
 
@@ -188,13 +231,46 @@ The dropdown must include a persistent **"File Upload..."** option at the bottom
 YYMM + MajorRevision (letter) + MinorRevision (number)
 ```
 
-**Example:** `2512G1` = December 2025, 7th major revision (G), 1st minor revision
+**Example:** `260320A` = March 2026, 1st major revision
 
-Major revision uses letters: A = 1st, B = 2nd, C = 3rd ... G = 7th, and so on.  
-Minor revision uses numbers starting from 0.
+- `A–Z`: Major revision — A = 1st, B = 2nd …
+- `0–9`: Minor revision — starts at 0
 
 ## Agent Versioning Behavior
 
 - **Agents must never modify the version string**
-- All version increments — major and minor — are the sole responsibility of the programmer
-- Claude Code should leave the existing version number untouched on every commit
+- All version increments are the sole responsibility of the programmer
+- Leave the existing version number untouched on every commit
+
+---
+
+# 13. CDN Dependencies
+
+All loaded via CDN — no local install:
+
+| Library | Version |
+|---|---|
+| Bootstrap | 5.3.3 |
+| jQuery | 3.7.1 |
+| DataTables | 2.3.4 |
+| DataTables Buttons | 3.2.5 |
+| DataTables RowGroup | 1.6.0 |
+| DataTables Responsive | 3.0.6 |
+| DataTables Select | 3.1.3 |
+| SheetJS | CDN latest |
+| JsBarcode | 3.11.5 |
+| QRCode.js | 1.0.0 |
+
+---
+
+# 14. File Inventory
+
+| File | Purpose |
+|---|---|
+| `index.html` | Target application — entire app lives here |
+| `README.md` | Project documentation |
+| `AGENTS.md` | Agent & contributor rules (this file) |
+| `CLAUDE.md` | Claude Code project instructions (mirrors AGENTS.md) |
+| `PROJECT_CHECKLIST.md` | Phased implementation tracker (Phases 1–11) |
+| `*.csv` | Sample data files for testing |
+| `*.xlsx` | Sample data files for testing |
