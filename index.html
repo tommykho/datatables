@@ -956,7 +956,8 @@
         lengthMenu:     [[10, 25, 50, 100, 250], [10, 25, 50, 100, 250]],
         select:         { style: 'multi' },
         rowGroup: {
-          dataSrc: 0,   // placeholder; disabled immediately after init below
+          enable: false,  // start ungrouped; GroupingManager enables on demand
+          dataSrc: 0,     // default column index (overridden dynamically)
           startRender(rows, group) {
             if (group === null || group === undefined) return '';
             return `${group} (${rows.count()} items)`;
@@ -989,9 +990,6 @@
           }
         ]
       });
-
-      // Disable RowGroup on startup — grouping is driven by GroupingManager dropdown.
-      dt.rowGroup().disable();
 
       // showSelectedFilter references dt, so must be created after DataTable init.
       // The button action closures capture this variable by reference and only
