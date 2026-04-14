@@ -831,7 +831,7 @@
                 const safeHtml = String(display ?? '')
                   .replace(/&/g, '&amp;').replace(/</g, '&lt;');
                 return `<div>
-                  <div>${safeHtml}</div>
+                  <div>${safeHtml || '-'}</div>
                   <svg class="barcode" data-value="${safeAttr}"></svg>
                   <div class="qrcode"  data-value="${safeAttr}"></div>
                 </div>`;
@@ -843,7 +843,10 @@
         return {
           title: h,
           render(data, type) {
-            if (type === 'display') return excelSerialToISO(data);
+            if (type === 'display') {
+              const v = excelSerialToISO(data);
+              return v === '' ? '-' : v;
+            }
             return data;
           }
         };
@@ -997,8 +1000,8 @@
           enable: false,  // start ungrouped; GroupingManager enables on demand
           dataSrc: 0,     // default column index (overridden dynamically)
           startRender(rows, group) {
-            if (group === null || group === undefined) return '';
-            return `${group} (${rows.count()} items)`;
+            const label = (group === null || group === undefined || group === '') ? '-' : group;
+            return `${label} (${rows.count()} items)`;
           }
         },
         responsive: true,
