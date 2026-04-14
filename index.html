@@ -417,7 +417,7 @@
 
       for (let i = 0; i < line.length; i++) {
         const ch = line[i];
-        if (ch === '"' && line[i + 1] === '"') {
+        if (ch === '"' && inQuotes && line[i + 1] === '"') {
           current += '"';
           i++;
         } else if (ch === '"') {
